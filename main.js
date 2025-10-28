@@ -21,6 +21,7 @@ let player, platformManager, replay;
 let cameraY = 0;
 let score = 0;
 let gameState = 'start';
+let lastTime = 0;
 
 const playerImg = new Image();
 playerImg.src = 'player.png';
@@ -81,9 +82,9 @@ function uiState(state) {
     }
 }
 
-function update() {
+function update(deltaTime) {
     const tilt = controls.getTilt();
-    player.update(tilt, platformManager.platforms, canvas.width);
+    player.update(tilt, platformManager.platforms, canvas.width, deltaTime);
 
     // Camera follows player
     if (player.y < cameraY + canvas.height / 2.5) {
@@ -139,9 +140,16 @@ function drawReplay() {
 }
 
 
-function gameLoop() {
+function gameLoop(timestamp) {
+    if (!lastTime) {
+        lastTime = timestamp;
+    }
+    const deltaTime = (timestamp - lastTime) / 1000;
+    lastTime = timestamp;
+
     if (gameState === 'playing') {
-        update();
+        // Clamp deltaTime to avoid large jumps if tab is inactive for a while
+        update(Math.min(deltaTime, 0.1));
         draw();
         replay.recordFrame(player, platformManager.platforms, cameraY);
     } else if (gameState === 'gameOver' && replay.isPlaying) {
@@ -161,7 +169,10 @@ startButton.addEventListener('click', () => {
     }).catch(console.error);
 });
 
-restartButton.addEventListener('click', init);
+restartButton.addEventListener('click', () => {
+    lastTime = 0; // Reset lastTime on restart
+    init();
+});
 
 // Initial UI state
 uiState('start');
